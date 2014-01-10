@@ -48,7 +48,7 @@ module FakeStripe
     end
 
     get '/v1/customers/:id' do
-      json_response 200, fixture('retrieve_customer')
+      json_response 200, customer_response.to_json
     end
 
     post '/v1/customers/:id' do
@@ -384,6 +384,7 @@ module FakeStripe
     def successful_charge
       {
         amount: params[:amount].to_i,
+        customer: CUSTOMER_ID,
         card: {
           id: params[:card],
           address_city: nil,
@@ -474,6 +475,75 @@ module FakeStripe
         },
         statement_descriptor: nil,
         status: "succeeded"
+      }
+    end
+
+    def customer_response
+      {
+        active_card: FakeStripe.cards.first,
+        cards: cards_response,
+        account_balance: 0,
+        created: 1394731627,
+        currency: "usd",
+        default_source: "card_1234567890ABCDEFghijklmn",
+        delinquent: false,
+        description: nil,
+        discount: nil,
+        email: nil,
+        id: CUSTOMER_ID,
+        livemode: false,
+        object: "customer",
+        subscription: nil,
+        metadata: {
+        },
+        sources: {
+          object: "list",
+          data: [
+            {
+              id: "card_1234567890ABCDEFghijklmn",
+              object: "card",
+              address_city: null,
+              address_country: null,
+              address_line1: null,
+              address_line1_check: null,
+              address_line2: null,
+              address_state: null,
+              address_zip: null,
+              address_zip_check: null,
+              brand: "Visa",
+              country: "US",
+              customer: "abcdefghijklmnop",
+              cvc_check: "pass",
+              dynamic_last4: null,
+              exp_month: 10,
+              exp_year: 2016,
+              funding: "credit",
+              last4: "4242",
+              metadata: {},
+              name: null,
+              tokenization_method: null
+            }
+          ],
+          has_more: false,
+          total_count: 1,
+          url: "/v1/customers/abcdefghijklmnop/sources"
+        },
+        subscriptions: {
+          object: "list",
+          count: 0,
+          url: "/v1/customers/abcdefghijklmnop/subscriptions",
+          data: [
+          ]
+        }
+      }
+    end
+
+    def cards_response
+      {
+        object: "list",
+        count: FakeStripe.cards.size,
+        url: "/v1/customers/#{CUSTOMER_ID}/cards",
+        data: FakeStripe.cards
       }
     end
   end

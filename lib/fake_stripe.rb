@@ -16,6 +16,7 @@ module FakeStripe
     recipient refund subscription token transfer}.freeze
   CARD_OBJECT_TYPE = "card"
   BANK_ACCOUNT_OBJECT_TYPE = "bank_account"
+  CUSTOMER_ID = "cus_7xeYRmuGuwvZK1"
 
   STRIPE_OBJECTS.each do |object|
     define_singleton_method "#{object}_calls" do
@@ -27,10 +28,19 @@ module FakeStripe
     end
   end
 
+  def self.cards
+    @@cards
+  end
+
+  def self.cards=(cards)
+    @@cards = cards
+  end
+
   def self.reset
     STRIPE_OBJECTS.each do |object|
       instance_variable_set("@#{object}_calls", [])
     end
+    @@cards = []
   end
 
   def self.stub_stripe
