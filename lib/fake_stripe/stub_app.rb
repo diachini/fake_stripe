@@ -8,10 +8,13 @@ module FakeStripe
       if params['amount'] && params['amount'].to_i <= 0
         json_response 400, fixture('invalid_positive_integer')
       else
-        if customer_owns_card?
-          add_successful_charge
+        charge = Charge.new(FakeStripe.card_ids, params)
+
+        if charge.valid?
+          FakeStripe.charge_calls << charge.response
+          json_response(201, charge.response.to_json)
         else
-          unknown_card_error
+          json_response(404, charge.error.to_json)
         end
       end
     end
@@ -394,103 +397,6 @@ module FakeStripe
       end
     end
 
-    def successful_charge
-      {
-        amount: params[:amount].to_i,
-        customer: CUSTOMER_ID,
-        card: {
-          id: params[:card],
-          address_city: nil,
-          address_country: nil,
-          address_line1: nil,
-          address_line1_check: nil,
-          address_line2: nil,
-          address_state: nil,
-          address_zip: nil,
-          address_zip_check: nil,
-          country: "US",
-          cvc_check: "pass",
-          exp_month: 11,
-          exp_year: 2014,
-          fingerprint: "qhjxpr7DiCdFYTlH",
-          last4: "4242",
-          name: "john doe",
-          object: "card",
-          type: "Visa"
-        },
-        amount_refunded: 0,
-        application_fee: nil,
-        balance_transaction: "txn_17bBUd2eZvKYlo2CAv3mOn7F",
-        captured: true,
-        created: 11456245794,
-        currency: "usd",
-        customer: "cus_7xeYRmuGuwvZK1",
-        description: "Charge for VirtuMedix consultation for Guy Henggeler",
-        destination: nil,
-        dispute: nil,
-        failure_code: nil,
-        failure_message: nil,
-        fee: 59,
-        fee_details: [
-          {
-            amount: 59,
-            application: nil,
-            currency: "usd",
-            description: "Stripe processing fees",
-            type: "stripe_fee"
-          }
-        ],
-        fraud_details: {
-        },
-
-        id: "ch_17hjFm2eZvKYlo2Cf6ceKOqV",
-        invoice: nil,
-        livemode: false,
-        metadata: {
-        },
-        object: "charge",
-        order: nil,
-        paid: true,
-        refunded: false,
-        refunds: {
-          object: "list",
-          data: [
-          ],
-          has_more: false,
-          total_count: 0,
-          url: "/v1/charges/ch_17hjFm2eZvKYlo2Cf6ceKOqV/refunds"
-        },
-        shipping: nil,
-        source: {
-          id: "card_17hjFk2eZvKYlo2CuvsYuAE1",
-          object: "card",
-          address_city: nil,
-          address_country: nil,
-          address_line1: nil,
-          address_line1_check: nil,
-          address_line2: nil,
-          address_state: nil,
-          address_zip: nil,
-          address_zip_check: nil,
-          brand: "Visa",
-          country: "US",
-          customer: "cus_7xeYRmuGuwvZK1",
-          cvc_check: "pass",
-          dynamic_last4: nil,
-          exp_month: 2,
-          exp_year: 2017,
-          funding: "credit",
-          last4: "4242",
-          metadata: {
-          },
-          name: nil,
-          tokenization_method: nil
-        },
-        statement_descriptor: nil,
-        status: "succeeded"
-      }
-    end
-
     def customer_response
       {
         active_card: FakeStripe.cards.first,
@@ -586,26 +492,6 @@ module FakeStripe
         object: "card",
         type: "Visa"
       }
-    end
-
-    def customer_owns_card?
-      params[:customer].nil? || FakeStripe.customer_cards.has_key?(params[:card])
-    end
-
-    def add_successful_charge
-      charge = successful_charge
-      FakeStripe.charge_calls << charge
-      json_response 201, charge.to_json
-    end
-
-    def unknown_card_error
-      json_response(404, {
-        error: {
-          type: "invalid_request_error",
-          message: "Customer #{params[:customer]} does not have card with ID #{params[:card]}",
-          param: "card"
-        }
-      }.to_json)
     end
   end
 end
