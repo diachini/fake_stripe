@@ -28,19 +28,20 @@ module FakeStripe
     end
   end
 
-  def self.cards
-    @@cards
+  class << self
+    attr_accessor :charge_calls
+    attr_accessor :customer_cards
   end
 
-  def self.cards=(cards)
-    @@cards = cards
+  def self.cards
+    customer_cards.values
   end
 
   def self.reset
     STRIPE_OBJECTS.each do |object|
       instance_variable_set("@#{object}_calls", [])
     end
-    @@cards = []
+    self.customer_cards = {}
   end
 
   def self.stub_stripe
