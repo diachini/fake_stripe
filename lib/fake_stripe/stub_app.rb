@@ -8,12 +8,16 @@ module FakeStripe
       if params['amount'] && params['amount'].to_i <= 0
         json_response 400, fixture('invalid_positive_integer')
       else
-        charge = successful_charge
-        FakeStripe.charge_calls << charge
-        json_response 201, charge.to_json
+        charge = Charge.new(FakeStripe.card_ids, params)
+
+        if charge.valid?
+          FakeStripe.charge_calls << charge.response
+          json_response(201, charge.response.to_json)
+        else
+          json_response(404, charge.error.to_json)
+        end
       end
     end
-
 
     get '/v1/charges/:charge_id' do
       json_response 200, fixture('retrieve_charge')
@@ -48,7 +52,7 @@ module FakeStripe
     end
 
     get '/v1/customers/:id' do
-      json_response 200, fixture('retrieve_customer')
+      json_response 200, customer_response.to_json
     end
 
     post '/v1/customers/:id' do
@@ -360,6 +364,18 @@ module FakeStripe
       json_response 200, fixture('retrieve_token')
     end
 
+
+    get '/v1/customers/:customer_id/cards' do
+      json_response 200, cards_response.to_json
+    end
+
+    post '/v1/customers/:customer_id/cards' do
+      id = next_card_id
+      card = new_card(id)
+      FakeStripe.customer_cards[id] = card
+      json_response 201, card.to_json
+    end
+
     private
 
     def fixture(file_name)
@@ -381,99 +397,100 @@ module FakeStripe
       end
     end
 
-    def successful_charge
+    def customer_response
       {
-        amount: params[:amount].to_i,
-        card: {
-          id: params[:card],
-          address_city: nil,
-          address_country: nil,
-          address_line1: nil,
-          address_line1_check: nil,
-          address_line2: nil,
-          address_state: nil,
-          address_zip: nil,
-          address_zip_check: nil,
-          country: "US",
-          cvc_check: "pass",
-          exp_month: 11,
-          exp_year: 2014,
-          fingerprint: "qhjxpr7DiCdFYTlH",
-          last4: "4242",
-          name: "john doe",
-          object: "card",
-          type: "Visa"
-        },
-        amount_refunded: 0,
-        application_fee: nil,
-        balance_transaction: "txn_17bBUd2eZvKYlo2CAv3mOn7F",
-        captured: true,
-        created: 11456245794,
+        active_card: FakeStripe.cards.first,
+        cards: cards_response,
+        account_balance: 0,
+        created: 1394731627,
         currency: "usd",
-        customer: "cus_7xeYRmuGuwvZK1",
-        description: "Charge for VirtuMedix consultation for Guy Henggeler",
-        destination: nil,
-        dispute: nil,
-        failure_code: nil,
-        failure_message: nil,
-        fee: 59,
-        fee_details: [
-          {
-            amount: 59,
-            application: nil,
-            currency: "usd",
-            description: "Stripe processing fees",
-            type: "stripe_fee"
-          }
-        ],
-        fraud_details: {
-        },
-
-        id: "ch_17hjFm2eZvKYlo2Cf6ceKOqV",
-        invoice: nil,
+        default_source: "card_1234567890ABCDEFghijklmn",
+        delinquent: false,
+        description: nil,
+        discount: nil,
+        email: nil,
+        id: CUSTOMER_ID,
         livemode: false,
+        object: "customer",
+        subscription: nil,
         metadata: {
         },
-        object: "charge",
-        order: nil,
-        paid: true,
-        refunded: false,
-        refunds: {
+        sources: {
           object: "list",
           data: [
+            {
+              id: "card_1234567890ABCDEFghijklmn",
+              object: "card",
+              address_city: nil,
+              address_country: nil,
+              address_line1: nil,
+              address_line1_check: nil,
+              address_line2: nil,
+              address_state: nil,
+              address_zip: nil,
+              address_zip_check: nil,
+              brand: "Visa",
+              country: "US",
+              customer: "abcdefghijklmnop",
+              cvc_check: "pass",
+              dynamic_last4: nil,
+              exp_month: 10,
+              exp_year: 2016,
+              funding: "credit",
+              last4: "4242",
+              metadata: {},
+              name: nil,
+              tokenization_method: nil
+            }
           ],
           has_more: false,
-          total_count: 0,
-          url: "/v1/charges/ch_17hjFm2eZvKYlo2Cf6ceKOqV/refunds"
+          total_count: 1,
+          url: "/v1/customers/abcdefghijklmnop/sources"
         },
-        shipping: nil,
-        source: {
-          id: "card_17hjFk2eZvKYlo2CuvsYuAE1",
-          object: "card",
-          address_city: nil,
-          address_country: nil,
-          address_line1: nil,
-          address_line1_check: nil,
-          address_line2: nil,
-          address_state: nil,
-          address_zip: nil,
-          address_zip_check: nil,
-          brand: "Visa",
-          country: "US",
-          customer: "cus_7xeYRmuGuwvZK1",
-          cvc_check: "pass",
-          dynamic_last4: nil,
-          exp_month: 2,
-          exp_year: 2017,
-          funding: "credit",
-          last4: "4242",
-          metadata: {
-          },
-          name: nil,
-          tokenization_method: nil
-        },
-        statement_descriptor: nil,
-        status: "succeeded"
+        subscriptions: {
+          object: "list",
+          count: 0,
+          url: "/v1/customers/abcdefghijklmnop/subscriptions",
+          data: [
+          ]
+        }
+      }
+    end
+
+    def cards_response
+      {
+        object: "list",
+        count: FakeStripe.cards.size,
+        url: "/v1/customers/#{CUSTOMER_ID}/cards",
+        data: FakeStripe.cards
+      }
+    end
+
+    def next_card_id
+      "card_#{FakeStripe.cards.size}"
+    end
+
+    def new_card(id)
+      {
+        id: id,
+        customer: CUSTOMER_ID,
+        address_city: nil,
+        address_country: nil,
+        address_line1: nil,
+        address_line1_check: nil,
+        address_line2: nil,
+        address_state: nil,
+        address_zip: nil,
+        address_zip_check: nil,
+        country: "US",
+        cvc_check: "pass",
+        exp_month: 11,
+        exp_year: 2015,
+        fingerprint: "sHKpS2lYHtT5ZU5L",
+        last4: "4242",
+        name: nil,
+        object: "card",
+        type: "Visa"
       }
     end
   end

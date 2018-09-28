@@ -1,8 +1,9 @@
 require 'fake_stripe/configuration'
+require 'fake_stripe/exceptions'
 require 'fake_stripe/initializers/webmock'
+require 'fake_stripe/models'
 require 'fake_stripe/stub_app'
 require 'fake_stripe/stub_stripe_js'
-require 'fake_stripe/exceptions'
 
 if defined?(RSpec)
   require 'fake_stripe/rspec'
@@ -16,6 +17,7 @@ module FakeStripe
     recipient refund subscription token transfer}.freeze
   CARD_OBJECT_TYPE = "card"
   BANK_ACCOUNT_OBJECT_TYPE = "bank_account"
+  CUSTOMER_ID = "cus_7xeYRmuGuwvZK1"
 
   STRIPE_OBJECTS.each do |object|
     define_singleton_method "#{object}_calls" do
@@ -27,10 +29,24 @@ module FakeStripe
     end
   end
 
+  class << self
+    attr_accessor :charge_calls
+    attr_accessor :customer_cards
+  end
+
+  def self.cards
+    customer_cards.values
+  end
+
+  def self.card_ids
+    customer_cards.keys
+  end
+
   def self.reset
     STRIPE_OBJECTS.each do |object|
       instance_variable_set("@#{object}_calls", [])
     end
+    self.customer_cards = {}
   end
 
   def self.stub_stripe
